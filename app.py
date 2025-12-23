@@ -17,7 +17,7 @@ MENU = {
         "Mix Dog - Jumbo": 2.25, "Champi Dog": 2.25, "Hot Dog con cebolla": 1.75
     },
     "Papas Fritas": {
-        "Salchipapa (1.50)": 1.50, "Salchipapa (1.75)": 1.75, "Papi carne": 2.50, "Papi Pollo": 2.50,
+        "Salchipapa (2.00)": 2.00, "Salchipapa (1.75)": 1.75, "Papi carne": 2.50, "Papi Pollo": 2.50,
         "Salchipapa especial": 3.75, "Papa Mix": 3.75, "Papa Wlady": 5.00
     },
     "Sanduches": {
@@ -28,7 +28,7 @@ MENU = {
         "Fuze Tea mediano": 1.00, "Fuze Tea Grande": 1.50, "Coca Flaca": 1.75,
         "Cola Sabores Flaca": 1.50, "Jugos": 1.50, "Batidos": 1.75, "Jamaica": 0.50
     },
-    "Porciones": {
+    "Porciónes": {
         "Papas Fritas (0.50)": 0.50, "Papas Fritas (1.00)": 1.00, "Huevo Frito": 0.75,
         "Presa de Pollo": 1.50, "Salame": 0.75, "Queso": 0.75, "Carne": 0.75, "Tocino": 0.75
     }
@@ -51,13 +51,13 @@ def guardar_datos(df):
 
 st.title("🍔 Mi Escondite en la Amazonía - Gestor de Pedidos")
 
-# Ancla para scroll automático
-st.markdown('<a id="formulario-pedido"></a>', unsafe_allow_html=True)
-
 opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Cambiar Estado"])
 
 if opcion == "Registrar Pedido":
     st.header("Registrar Nuevo Pedido")
+
+    # Ancla para volver al formulario
+    st.markdown("<div id='formulario'></div>", unsafe_allow_html=True)
 
     if 'pedido_temp' not in st.session_state:
         st.session_state.pedido_temp = {
@@ -66,6 +66,9 @@ if opcion == "Registrar Pedido":
             "total": 0.0,
             "estado": "En proceso"
         }
+
+    if 'pedido_guardado' not in st.session_state:
+        st.session_state.pedido_guardado = False
 
     nombre = st.text_input("Nombre del Pedido (ej. Berta Coello, Mesa 1)", value=st.session_state.pedido_temp["nombre"])
     total = 0.0
@@ -100,8 +103,10 @@ if opcion == "Registrar Pedido":
                 "total": total,
                 "estado": estado
             }
+            st.session_state.pedido_guardado = False
             st.rerun()
 
+    # Mostrar resumen si hay pedido temporal
     if st.session_state.pedido_temp["total"] > 0 and st.session_state.pedido_temp["nombre"]:
         st.markdown("### 🔍 Resumen del pedido - Verifica antes de guardar")
         detalle_lista = [f"{c}x {p}" for p, c in st.session_state.pedido_temp["seleccion"].items()]
@@ -130,30 +135,38 @@ if opcion == "Registrar Pedido":
                 df = pd.concat([df, nuevo_pedido], ignore_index=True)
                 guardar_datos(df)
 
-                st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
-                st.balloons()
-                st.markdown(f"""
-                **¡El pedido ha sido registrado correctamente!**
-                - **ID del pedido**: #{nuevo_id}
-                - **Cliente/Nombre**: {st.session_state.pedido_temp["nombre"]}
-                - **Items**: {detalle_str}
-                - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
-                - **Estado**: {st.session_state.pedido_temp["estado"]}
-                """)
-                st.info("Puedes registrar el siguiente pedido ahora.")
-
-                st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
+                # CONFIRMACIÓN FINAL CLARA
+                st.session_state.pedido_guardado = True
+                st.session_state.nuevo_id_guardado = nuevo_id
+                st.session_state.detalle_guardado = detalle_str
                 st.rerun()
 
         with col2:
-            if st.button("✏️ Corregir (volver al formulario)"):
-                # Scroll automático al inicio del formulario
-                st.markdown("""
-                <script>
-                window.parent.document.querySelector('section.main').scrollTo(0, 0);
-                </script>
-                """, unsafe_allow_html=True)
+            if st.button("✏️ Corregir"):
+                # Scroll al formulario
+                st.markdown("<script>window.location.hash = '#formulario';</script>", unsafe_allow_html=True)
                 st.rerun()
+
+    # Mensaje de éxito después de guardar
+    if st.session_state.get('pedido_guardado', False):
+        st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
+        st.balloons()
+        st.markdown(f"""
+        **¡El pedido se registró correctamente!**
+        - **ID del pedido**: #{st.session_state.nuevo_id_guardado}
+        - **Cliente/Nombre**: {st.session_state.pedido_temp["nombre"]}
+        - **Items**: {st.session_state.detalle_guardado}
+        - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
+        - **Estado**: {st.session_state.pedido_temp["estado"]}
+        """)
+        st.info("Puedes registrar el siguiente pedido ahora. El formulario está listo abajo.")
+
+        if st.button("Registrar nuevo pedido"):
+            st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
+            st.session_state.pedido_guardado = False
+            st.rerun()
+
+# (El resto del código "Ver Pedidos" y "Cambiar Estado" permanece igual)
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
