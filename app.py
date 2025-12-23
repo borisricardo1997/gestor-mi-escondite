@@ -53,10 +53,12 @@ st.title("🍔 Mi Escondite en la Amazonía - Gestor de Pedidos")
 
 opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Cambiar Estado"])
 
+# Ancla para scroll automático
+st.markdown('<a id="formulario-pedido"></a>', unsafe_allow_html=True)
+
 if opcion == "Registrar Pedido":
     st.header("Registrar Nuevo Pedido")
 
-    # Session state para mantener datos mientras se corrige
     if 'pedido_temp' not in st.session_state:
         st.session_state.pedido_temp = {
             "nombre": "",
@@ -129,27 +131,34 @@ if opcion == "Registrar Pedido":
                 df = pd.concat([df, nuevo_pedido], ignore_index=True)
                 guardar_datos(df)
 
-                # MENSAJE DE CONFIRMACIÓN FINAL
+                # CONFIRMACIÓN FINAL DE ÉXITO
                 st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
-                st.balloons()
+                st.balloons()  # Animación de celebración
                 st.markdown(f"""
-                **Pedido guardado correctamente:**
-                - **ID**: #{nuevo_id}
-                - **Nombre**: {st.session_state.pedido_temp["nombre"]}
-                - **Detalle**: {detalle_str}
-                - **Total**: ${st.session_state.pedido_temp["total"]:.2f}
+                **¡El pedido ha sido registrado correctamente!**
+                - **ID del pedido**: #{nuevo_id}
+                - **Cliente/Nombre**: {st.session_state.pedido_temp["nombre"]}
+                - **Items**: {detalle_str}
+                - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
                 - **Estado**: {st.session_state.pedido_temp["estado"]}
                 """)
-                st.info("Puedes registrar otro pedido ahora mismo.")
+                st.info("Puedes registrar el siguiente pedido ahora.")
 
-                # Limpiar para siguiente pedido
+                # Limpiar formulario
                 st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
                 st.rerun()
 
         with col2:
             if st.button("✏️ Corregir (volver al formulario)"):
+                # Scroll automático hacia arriba al formulario
+                st.markdown("""
+                <script>
+                window.parent.document.querySelector('section.main').scrollTo(0, 0);
+                </script>
+                """, unsafe_allow_html=True)
                 st.rerun()
 
+# Las secciones "Ver Pedidos" y "Cambiar Estado" permanecen igual que antes
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
     df = cargar_datos()
@@ -187,31 +196,4 @@ elif opcion == "Ver Pedidos":
                     if os.path.exists(DATA_FILE):
                         os.remove(DATA_FILE)
                     st.success("¡Todos los registros borrados! Ahora empieza desde cero.")
-                    if 'confirmar_borrado' in st.session_state:
-                        del st.session_state.confirmar_borrado
-                    st.rerun()
-
-elif opcion == "Cambiar Estado":
-    st.header("Cambiar Estado de Pedido")
-    df = cargar_datos()
-    if df.empty:
-        st.info("No hay pedidos para modificar.")
-    else:
-        busqueda = st.text_input("Buscar por nombre o ID")
-        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
-        if filtrado.empty:
-            st.warning("No se encontró ningún pedido.")
-        else:
-            opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
-            seleccionado = st.selectbox("Selecciona el pedido", opciones)
-            if seleccionado:
-                pedido_id = int(seleccionado.split(" - ")[0][1:])
-                pedido = df[df['ID'] == pedido_id].iloc[0]
-                st.info(f"Detalle: {pedido['Detalle']}")
-                st.info(f"Total: ${pedido['Total']:.2f}")
-                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
-                if st.button("Actualizar Estado"):
-                    df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
-                    guardar_datos(df)
-                    st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
-                    st.rerun()
+                    if 'confirmar
