@@ -56,7 +56,7 @@ opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Camb
 if opcion == "Registrar Pedido":
     st.header("Registrar Nuevo Pedido")
 
-    # Usamos session_state para mantener los datos mientras se corrige
+    # Session state para mantener datos mientras se corrige
     if 'pedido_temp' not in st.session_state:
         st.session_state.pedido_temp = {
             "nombre": "",
@@ -92,7 +92,6 @@ if opcion == "Registrar Pedido":
         elif total == 0:
             st.error("❌ Agrega al menos un producto.")
         else:
-            # Guardamos temporalmente para mostrar resumen
             st.session_state.pedido_temp = {
                 "nombre": nombre.strip(),
                 "seleccion": seleccion,
@@ -101,13 +100,13 @@ if opcion == "Registrar Pedido":
             }
             st.rerun()
 
-    # Si hay un pedido temporal, mostrar resumen y confirmación
+    # Resumen y confirmación
     if st.session_state.pedido_temp["total"] > 0 and st.session_state.pedido_temp["nombre"]:
         st.markdown("### 🔍 Resumen del pedido - Verifica antes de guardar")
         detalle_lista = [f"{c}x {p}" for p, c in st.session_state.pedido_temp["seleccion"].items()]
         detalle_str = " | ".join(detalle_lista) if detalle_lista else "Sin items"
 
-        st.success(f"""
+        st.markdown(f"""
         **Nombre**: {st.session_state.pedido_temp["nombre"]}
         **Detalle**: {detalle_str}
         **Total**: ${st.session_state.pedido_temp["total"]:.2f}
@@ -130,17 +129,26 @@ if opcion == "Registrar Pedido":
                 df = pd.concat([df, nuevo_pedido], ignore_index=True)
                 guardar_datos(df)
 
-                st.success("🎉 ¡PEDIDO GUARDADO CORRECTAMENTE!")
+                # MENSAJE DE CONFIRMACIÓN FINAL
+                st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
                 st.balloons()
-                # Limpiar temporal
+                st.markdown(f"""
+                **Pedido guardado correctamente:**
+                - **ID**: #{nuevo_id}
+                - **Nombre**: {st.session_state.pedido_temp["nombre"]}
+                - **Detalle**: {detalle_str}
+                - **Total**: ${st.session_state.pedido_temp["total"]:.2f}
+                - **Estado**: {st.session_state.pedido_temp["estado"]}
+                """)
+                st.info("Puedes registrar otro pedido ahora mismo.")
+
+                # Limpiar para siguiente pedido
                 st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
                 st.rerun()
 
         with col2:
             if st.button("✏️ Corregir (volver al formulario)"):
-                st.rerun()  # Vuelve al formulario con los datos cargados
-
-# (Las secciones "Ver Pedidos" y "Cambiar Estado" quedan iguales al código anterior)
+                st.rerun()
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
@@ -207,4 +215,3 @@ elif opcion == "Cambiar Estado":
                     guardar_datos(df)
                     st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
                     st.rerun()
-
