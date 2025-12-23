@@ -8,62 +8,29 @@ DATA_FILE = 'pedidos_mi_escondite.csv'
 
 MENU = {
     "Hamburguesas": {
-        "Italiana": 2.50,
-        "Francesa": 3.25,
-        "Española": 3.25,
-        "Americana": 3.25,
-        "4 Estaciones": 3.25,
-        "Mexicana": 3.25,
-        "Especial": 3.25,
-        "Suprema": 3.75,
-        "Papi Burguer": 2.75,
-        "A su gusto (Jumbo)": 5.50,
-        "Triple Burguer": 6.00,
-        "Doble Burguer": 4.50
+        "Italiana": 2.50, "Francesa": 3.25, "Española": 3.25, "Americana": 3.25, "4 Estaciones": 3.25,
+        "Mexicana": 3.25, "Especial": 3.25, "Suprema": 3.75, "Papi Burguer": 2.75, "A su gusto (Jumbo)": 5.50,
+        "Triple Burguer": 6.00, "Doble Burguer": 4.50
     },
     "Hot Dogs": {
-        "Especial Mixto": 2.25,
-        "Especial de Pollo": 2.25,
-        "Hot Dog con salame": 2.25,
-        "Mix Dog - Jumbo": 2.25,
-        "Champi Dog": 2.25,
-        "Hot Dog con cebolla": 1.75
+        "Especial Mixto": 2.25, "Especial de Pollo": 2.25, "Hot Dog con salame": 2.25,
+        "Mix Dog - Jumbo": 2.25, "Champi Dog": 2.25, "Hot Dog con cebolla": 1.75
     },
     "Papas Fritas": {
-        "Salchipapa (1.50)": 1.50,
-        "Salchipapa (1.75)": 1.75,
-        "Papi carne": 2.50,
-        "Papi Pollo": 2.50,
-        "Salchipapa especial": 3.75,
-        "Papa Mix": 3.75,
-        "Papa Wlady": 5.00
+        "Salchipapa (1.50)": 1.50, "Salchipapa (1.75)": 1.75, "Papi carne": 2.50, "Papi Pollo": 2.50,
+        "Salchipapa especial": 3.75, "Papa Mix": 3.75, "Papa Wlady": 5.00
     },
     "Sanduches": {
-        "Cubano": 2.25,
-        "Vegetariano": 2.25,
-        "Sanduche de Pollo": 2.25
+        "Cubano": 2.25, "Vegetariano": 2.25, "Sanduche de Pollo": 2.25
     },
     "Bebidas": {
-        "Colas Coca Pequeña": 0.75,
-        "Cola Sabores Pequeña": 0.50,
-        "Cola Inka Grande": 1.00,
-        "Fuze Tea mediano": 1.00,
-        "Fuze Tea Grande": 1.50,
-        "Coca Flaca": 1.75,
-        "Cola Sabores Flaca": 1.50,
-        "Jugos": 1.50,
-        "Batidos": 1.75,
-        "Jamaica": 0.50
+        "Colas Coca Pequeña": 0.75, "Cola Sabores Pequeña": 0.50, "Cola Inka Grande": 1.00,
+        "Fuze Tea mediano": 1.00, "Fuze Tea Grande": 1.50, "Coca Flaca": 1.75,
+        "Cola Sabores Flaca": 1.50, "Jugos": 1.50, "Batidos": 1.75, "Jamaica": 0.50
     },
     "Porciones": {
-        "Papas Fritas (0.50)": 0.50,
-        "Papas Fritas (1.00)": 1.00,
-        "Huevo Frito": 0.75,
-        "Presa de Pollo": 1.50,
-        "Salame": 0.75,
-        "Queso": 0.75,
-        "Carne": 0.75,
-        "Tocino": 0.75
+        "Papas Fritas (0.50)": 0.50, "Papas Fritas (1.00)": 1.00, "Huevo Frito": 0.75,
+        "Presa de Pollo": 1.50, "Salame": 0.75, "Queso": 0.75, "Carne": 0.75, "Tocino": 0.75
     }
 }
 
@@ -88,10 +55,17 @@ opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Camb
 
 if opcion == "Registrar Pedido":
     st.header("Registrar Nuevo Pedido")
-    nombre = st.text_input("Nombre del Pedido (ej. Berta Coello, Mesa 1)", "")
-    if not nombre:
-        st.warning("Ingresa un nombre para identificar el pedido.")
 
+    # Usamos session_state para mantener los datos mientras se corrige
+    if 'pedido_temp' not in st.session_state:
+        st.session_state.pedido_temp = {
+            "nombre": "",
+            "seleccion": {},
+            "total": 0.0,
+            "estado": "En proceso"
+        }
+
+    nombre = st.text_input("Nombre del Pedido (ej. Berta Coello, Mesa 1)", value=st.session_state.pedido_temp["nombre"])
     total = 0.0
     seleccion = {}
 
@@ -101,7 +75,8 @@ if opcion == "Registrar Pedido":
         i = 0
         for producto, precio in items.items():
             with cols[i % 3]:
-                cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=0, step=1, key=f"{cat}_{producto}_{i}")
+                cant_anterior = st.session_state.pedido_temp["seleccion"].get(f"{cat} - {producto}", 0)
+                cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=cant_anterior, step=1, key=f"{cat}_{producto}_{i}")
                 if cant > 0:
                     seleccion[f"{cat} - {producto}"] = cant
                     total += cant * precio
@@ -109,39 +84,63 @@ if opcion == "Registrar Pedido":
 
     st.markdown("---")
     st.write(f"**Total del pedido: ${total:.2f}**")
-    estado = st.selectbox("Estado inicial", ESTADOS, index=0)
+    estado = st.selectbox("Estado inicial", ESTADOS, index=ESTADOS.index(st.session_state.pedido_temp["estado"]))
 
-    if st.button("Guardar Pedido", type="primary"):
+    if st.button("Revisar Pedido antes de guardar"):
         if not nombre.strip():
             st.error("❌ Debes poner un nombre al pedido.")
         elif total == 0:
             st.error("❌ Agrega al menos un producto.")
         else:
-            df = cargar_datos()
-            nuevo_id = int(df['ID'].max() + 1) if not df.empty else 1
-            detalle = " | ".join([f"{c}x {p}" for p, c in seleccion.items()])
-            nuevo_pedido = pd.DataFrame([{
-                'ID': nuevo_id,
-                'Nombre_Orden': nombre.strip(),
-                'Fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'Detalle': detalle if detalle else "Sin items",
-                'Total': round(total, 2),
-                'Estado': estado
-            }])
-            df = pd.concat([df, nuevo_pedido], ignore_index=True)
-            guardar_datos(df)
+            # Guardamos temporalmente para mostrar resumen
+            st.session_state.pedido_temp = {
+                "nombre": nombre.strip(),
+                "seleccion": seleccion,
+                "total": total,
+                "estado": estado
+            }
+            st.rerun()
 
-            st.success("✅ ¡PEDIDO GUARDADO EXITOSAMENTE!")
-            st.balloons()
-            st.markdown(f"""
-            **Resumen del pedido guardado:**
-            - **ID**: #{nuevo_id}
-            - **Nombre**: {nombre.strip()}
-            - **Detalle**: {detalle if detalle else "Sin items"}
-            - **Total**: ${round(total, 2)}
-            - **Estado**: {estado}
-            """)
-            st.info("Puedes seguir registrando más pedidos o ir a 'Ver Pedidos'.")
+    # Si hay un pedido temporal, mostrar resumen y confirmación
+    if st.session_state.pedido_temp["total"] > 0 and st.session_state.pedido_temp["nombre"]:
+        st.markdown("### 🔍 Resumen del pedido - Verifica antes de guardar")
+        detalle_lista = [f"{c}x {p}" for p, c in st.session_state.pedido_temp["seleccion"].items()]
+        detalle_str = " | ".join(detalle_lista) if detalle_lista else "Sin items"
+
+        st.success(f"""
+        **Nombre**: {st.session_state.pedido_temp["nombre"]}
+        **Detalle**: {detalle_str}
+        **Total**: ${st.session_state.pedido_temp["total"]:.2f}
+        **Estado**: {st.session_state.pedido_temp["estado"]}
+        """)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Confirmar y guardar definitivamente", type="primary"):
+                df = cargar_datos()
+                nuevo_id = int(df['ID'].max() + 1) if not df.empty else 1
+                nuevo_pedido = pd.DataFrame([{
+                    'ID': nuevo_id,
+                    'Nombre_Orden': st.session_state.pedido_temp["nombre"],
+                    'Fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    'Detalle': detalle_str,
+                    'Total': round(st.session_state.pedido_temp["total"], 2),
+                    'Estado': st.session_state.pedido_temp["estado"]
+                }])
+                df = pd.concat([df, nuevo_pedido], ignore_index=True)
+                guardar_datos(df)
+
+                st.success("🎉 ¡PEDIDO GUARDADO CORRECTAMENTE!")
+                st.balloons()
+                # Limpiar temporal
+                st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
+                st.rerun()
+
+        with col2:
+            if st.button("✏️ Corregir (volver al formulario)"):
+                st.rerun()  # Vuelve al formulario con los datos cargados
+
+# (Las secciones "Ver Pedidos" y "Cambiar Estado" quedan iguales al código anterior)
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
@@ -208,3 +207,4 @@ elif opcion == "Cambiar Estado":
                     guardar_datos(df)
                     st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
                     st.rerun()
+
