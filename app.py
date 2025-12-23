@@ -8,26 +8,62 @@ DATA_FILE = 'pedidos_mi_escondite.csv'
 
 MENU = {
     "Hamburguesas": {
-        "Italiana": 2.25, "Francesa": 3.00, "Española": 3.00, "Americana": 3.00, "4 Estaciones": 3.00,
-        "Mexicana": 3.00, "Especial": 3.00, "Suprema": 3.50, "Papi Burguer": 2.50, "A su gusto (Jumbo)": 5.00,
-        "Triple Burguer": 6.00, "Doble Burguer": 4.50
+        "Italiana": 2.50,
+        "Francesa": 3.25,
+        "Española": 3.25,
+        "Americana": 3.25,
+        "4 Estaciones": 3.25,
+        "Mexicana": 3.25,
+        "Especial": 3.25,
+        "Suprema": 3.75,
+        "Papi Burguer": 2.75,
+        "A su gusto (Jumbo)": 5.50,
+        "Triple Burguer": 6.00,
+        "Doble Burguer": 4.50
     },
     "Hot Dogs": {
-        "Especial Mixto": 2.25, "Especial de Pollo": 2.25, "Hot Dog con salame": 2.25,
-        "Mix Dog - Jumbo": 2.25, "Champi Dog": 2.25, "Hot Dog con cebolla": 1.75
+        "Especial Mixto": 2.25,
+        "Especial de Pollo": 2.25,
+        "Hot Dog con salame": 2.25,
+        "Mix Dog - Jumbo": 2.25,
+        "Champi Dog": 2.25,
+        "Hot Dog con cebolla": 1.75
     },
     "Papas Fritas": {
-        "Salchipapa (1.50)": 1.50, "Salchipapa (1.75)": 1.75, "Papi carne": 2.25, "Papi Pollo": 2.25,
-        "Salchipapa especial": 3.25, "Papa Mix": 3.25, "Papa Wlady": 5.00
+        "Salchipapa (1.50)": 1.50,
+        "Salchipapa (1.75)": 1.75,
+        "Papi carne": 2.50,
+        "Papi Pollo": 2.50,
+        "Salchipapa especial": 3.75,
+        "Papa Mix": 3.75,
+        "Papa Wlady": 5.00
     },
     "Sanduches": {
-        "Cubano": 2.00, "Vegetariano": 2.00, "Sanduche de Pollo": 2.00
+        "Cubano": 2.25,
+        "Vegetariano": 2.25,
+        "Sanduche de Pollo": 2.25
     },
     "Bebidas": {
-        "Colas Pequeñas": 0.75, "Jugos": 1.50, "Batidos": 1.75, "Jamaica": 0.50
+        "Colas Coca Pequeña": 0.75,
+        "Cola Sabores Pequeña": 0.50,
+        "Cola Inka Grande": 1.00,
+        "Fuze Tea mediano": 1.00,
+        "Fuze Tea Grande": 1.50,
+        "Coca Flaca": 1.75,
+        "Cola Sabores Flaca": 1.50,
+        "Jugos": 1.50,
+        "Batidos": 1.75,
+        "Jamaica": 0.50
     },
-    "Porciónes": {
-        "Papas Fritas (0.50)": 0.50, "Papas Fritas (1.00)": 1.00, "Huevo Frito": 0.50, "Presa de Pollo": 1.50
+    "Porciones": {
+        "Papas Fritas (0.50)": 0.50,
+        "Papas Fritas (1.00)": 1.00,
+        "Huevo Frito": 0.75,
+        "Presa de Pollo": 1.50,
+        "Salame": 0.75,
+        "Queso": 0.75,
+        "Carne": 0.75,
+        "Tocino": 0.75
     }
 }
 
@@ -105,7 +141,7 @@ if opcion == "Registrar Pedido":
             - **Total**: ${round(total, 2)}
             - **Estado**: {estado}
             """)
-            st.info("Puedes seguir registrando más pedidos o ir a 'Ver Pedidos' para ver el registro completo.")
+            st.info("Puedes seguir registrando más pedidos o ir a 'Ver Pedidos'.")
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
