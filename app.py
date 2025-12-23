@@ -79,7 +79,7 @@ if opcion == "Registrar Pedido":
         i = 0
         for producto, precio in items.items():
             with cols[i % 3]:
-                key_unica = f"{cat}_{producto}_{datetime.now().strftime('%Y%m%d%H%M%S')}" if st.session_state.pedido_guardado else f"{cat}_{producto}_{i}"
+                key_unica = f"{cat}_{producto}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}" if st.session_state.pedido_guardado else f"{cat}_{producto}_{i}"
                 cant_anterior = st.session_state.pedido_temp["seleccion"].get(f"{cat} - {producto}", 0)
                 cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=cant_anterior, step=1, key=key_unica)
                 if cant > 0:
@@ -158,12 +158,9 @@ if opcion == "Registrar Pedido":
         st.info("El formulario está listo para el siguiente pedido.")
 
         if st.button("Registrar nuevo pedido"):
-            # Limpiar todo completamente
             st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
             st.session_state.pedido_guardado = False
             st.rerun()
-
-# (El resto del código "Ver Pedidos" y "Cambiar Estado" es el mismo de antes)
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
@@ -201,4 +198,32 @@ elif opcion == "Ver Pedidos":
                 if st.button("🔥 CONFIRMAR Y BORRAR TODO"):
                     if os.path.exists(DATA_FILE):
                         os.remove(DATA_FILE)
-                    st.success("¡Todos los registros borr
+                    st.success("¡Todos los registros borrados! Ahora empieza desde cero.")
+                    if 'confirmar_borrado' in st.session_state:
+                        del st.session_state.confirmar_borrado
+                    st.rerun()
+
+elif opcion == "Cambiar Estado":
+    st.header("Cambiar Estado de Pedido")
+    df = cargar_datos()
+    if df.empty:
+        st.info("No hay pedidos para modificar.")
+    else:
+        busqueda = st.text_input("Buscar por nombre o ID")
+        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
+        if filtrado.empty:
+            st.warning("No se encontró ningún pedido.")
+        else:
+            opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
+            seleccionado = st.selectbox("Selecciona el pedido", opciones)
+            if seleccionado:
+                pedido_id = int(seleccionado.split(" - ")[0][1:])
+                pedido = df[df['ID'] == pedido_id].iloc[0]
+                st.info(f"Detalle: {pedido['Detalle']}")
+                st.info(f"Total: ${pedido['Total']:.2f}")
+                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
+                if st.button("Actualizar Estado"):
+                    df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
+                    guardar_datos(df)
+                    st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
+                    st.rerun()
