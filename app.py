@@ -1,8 +1,8 @@
-Pythonimport streamlit as st
+import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import io  # <-- Nuevo para descarga
+import io
 
 DATA_FILE = 'pedidos_mi_escondite.csv'
 
@@ -53,7 +53,7 @@ if opcion == "Registrar Pedido":
         i = 0
         for producto, precio in items.items():
             with cols[i % 3]:
-                cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=0, step=1)
+                cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=0, step=1, key=f"{cat}_{producto}_{i}")
                 if cant > 0:
                     seleccion[f"{cat} - {producto}"] = cant
                     total += cant * precio
@@ -82,6 +82,7 @@ if opcion == "Registrar Pedido":
             df = pd.concat([df, nuevo], ignore_index=True)
             guardar_datos(df)
             st.success(f"Pedido guardado: #{nuevo_id} - {nombre} ({estado})")
+            st.rerun()
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
@@ -97,65 +98,39 @@ elif opcion == "Ver Pedidos":
         st.dataframe(df_filtrado.sort_values('ID', ascending=False))
         st.write(f"**Total mostrado: ${df_filtrado['Total'].sum():.2f}**")
 
+        # Botón de descarga
+        st.markdown("### 📥 Descargar respaldo diario")
+        csv_buffer = io.BytesIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        st.download_button(
+            label="Descargar todos los pedidos como CSV (para Excel)",
+            data=csv_buffer,
+            file_name=f"pedidos_mi_escondite_{datetime.now().strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+
 elif opcion == "Cambiar Estado":
     st.header("Modificar Estado de Pedido")
     df = cargar_datos()
     if df.empty:
         st.info("No hay pedidos.")
     else:
-        busqueda = st.text_input("Buscar por nombre o ID (ej. Berta)")
-        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False) | df['ID'].astype(str).str.contains(busqueda)]
+        busqueda = st.text_input("Buscar por nombre o ID")
+        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
         if filtrado.empty:
             st.warning("No encontrado.")
         else:
             opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
-            seleccionado = st.selectbox("Selecciona", opciones)
+            seleccionado = st.selectbox("Selecciona el pedido", opciones)
             if seleccionado:
                 pedido_id = int(seleccionado.split(" - ")[0][1:])
                 pedido = df[df['ID'] == pedido_id].iloc[0]
                 st.write(f"Detalle: {pedido['Detalle']}")
                 st.write(f"Total: ${pedido['Total']:.2f}")
-                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS)
+                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
                 if st.button("Actualizar"):
                     df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
                     guardar_datos(df)
-                    st.success(f"Actualizado a {nuevo_estado}!")
-
+                    st.success(f"¡Actualizado a {nuevo_estado}!")
                     st.rerun()
-                    # === NUEVO: BOTÓN DE DESCARGA ===
-        st.markdown("### Descargar datos")
-        # Convertir a CSV en memoria
-        csv_buffer = io.BytesIO()
-        df.to_csv(csv_buffer, index=False, encoding='utf-8')
-        csv_buffer.seek(0)
-        
-        st.download_button(
-            label="📥 Descargar todos los pedidos como CSV (abre en Excel)",
-            data=csv_buffer,
-            file_name=f"pedidos_mi_escondite_{datetime.now().strftime('%Y-%m-%d')}.csv",
-            mime="text/csv"
-        )
-        # === FIN NUEVO ===
-
-Abajo haz Commit changes (mensaje: "Agregado botón de descarga diaria").
-
-En minutos, la app se actualizará sola y verás un botón azul "Descargar todos los pedidos como CSV".
-Al hacer clic, descarga un archivo con fecha del día, que abres directo en Excel.
-Forma 2: Manual (sin cambiar código)
-Si no quieres tocar el código:
-
-Abre la app en tu celular o PC.
-Ve a "Ver Pedidos".
-Selecciona todo el contenido de la tabla (con el mouse o dedo).
-Copia y pega en una hoja de Google Sheets o Excel.
-O toma captura de pantalla diaria.
-
-Pero la Forma 1 con el botón es mucho mejor y profesional.
-Recomendación para tu negocio
-
-Usa el botón nuevo para descargar al final de cada día.
-Guárdalo en una carpeta en tu celular/PC o en Google Drive.
-Así tienes respaldo diario de ingresos (ventas = suma de Total en "Pagado").
-
-¿Quieres que agregue también un módulo simple de egresos/gastos (para restar compras, sueldos, etc. y ver ganancia diaria)? Dime y lo hacemos rápido.
-¡Ya tienes todo para manejar ingresos profesionalmente! 💰📊3,7sFast
