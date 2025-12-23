@@ -28,7 +28,7 @@ def cargar_datos():
             df['ID'] = range(1, len(df) + 1)
         if 'Nombre_Orden' not in df.columns:
             df['Nombre_Orden'] = "Sin nombre"
-        return df
+        return df.reset_index(drop=True)
     return pd.DataFrame(columns=['ID', 'Nombre_Orden', 'Fecha', 'Detalle', 'Total', 'Estado'])
 
 def guardar_datos(df):
@@ -39,11 +39,10 @@ st.title("🍔 Mi Escondite en la Amazonía - Gestor de Pedidos")
 opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Cambiar Estado"])
 
 if opcion == "Registrar Pedido":
-    # (código igual al anterior - no cambio nada aquí)
     st.header("Registrar Nuevo Pedido")
     nombre = st.text_input("Nombre del Pedido (ej. Berta Coello, Mesa 1)", "")
     if not nombre:
-        st.warning("Ingresa un nombre para identificar el pedido después.")
+        st.warning("Ingresa un nombre para identificar el pedido.")
 
     total = 0.0
     seleccion = {}
@@ -60,84 +59,29 @@ if opcion == "Registrar Pedido":
                     total += cant * precio
             i += 1
 
-    st.write(f"**Total: ${total:.2f}**")
+    st.write(f"**Total del pedido: ${total:.2f}**")
     estado = st.selectbox("Estado inicial", ESTADOS, index=0)
 
     if st.button("Guardar Pedido"):
-        if not nombre:
+        if not nombre.strip():
             st.error("Debes poner un nombre al pedido.")
         elif total == 0:
             st.error("Agrega al menos un producto.")
         else:
             df = cargar_datos()
-            nuevo_id = df['ID'].max() + 1 if not df.empty else 1
+            nuevo_id = int(df['ID'].max() + 1) if not df.empty else 1
             detalle = " | ".join([f"{c}x {p}" for p, c in seleccion.items()])
-            nuevo = pd.DataFrame({
-                'ID': [nuevo_id],
-                'Nombre_Orden': [nombre],
-                'Fecha': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-                'Detalle': [detalle],
-                'Total': [round(total, 2)],
-                'Estado': [estado]
-            })
-            df = pd.concat([df, nuevo], ignore_index=True)
+            nuevo_pedido = pd.DataFrame([{
+                'ID': nuevo_id,
+                'Nombre_Orden': nombre.strip(),
+                'Fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'Detalle': detalle if detalle else "Sin items",
+                'Total': round(total, 2),
+                'Estado': estado
+            }])
+            df = pd.concat([df, nuevo_pedido], ignore_index=True)
             guardar_datos(df)
-            st.success(f"Pedido guardado: #{nuevo_id} - {nombre} ({estado})")
+            st.success(f"¡Pedido #{nuevo_id} - {nombre} guardado como {estado}!")
             st.rerun()
 
-elif opcion == "Ver Pedidos":
-    st.header("Registro de Pedidos")
-    df = cargar_datos()
-    if df.empty:
-        st.info("No hay pedidos registrados.")
-    else:
-        estado_filtro = st.multiselect("Filtrar por estado", ESTADOS, default=ESTADOS)
-        fecha_filtro = st.date_input("Filtrar por fecha", value=None)
-        df_filtrado = df[df['Estado'].isin(estado_filtro)]
-        if fecha_filtro:
-            df_filtrado = df_filtrado[pd.to_datetime(df_filtrado['Fecha']).dt.date == fecha_filtro]
-        st.dataframe(df_filtrado.sort_values('ID', ascending=False))
-        st.write(f"**Total mostrado: ${df_filtrado['Total'].sum():.2f}**")
-
-        # Botón de descarga
-        st.markdown("### 📥 Descargar respaldo")
-        csv_buffer = io.BytesIO()
-        df.to_csv(csv_buffer, index=False, encoding='utf-8')
-        csv_buffer.seek(0)
-        st.download_button(
-            label="Descargar todos los pedidos como CSV",
-            data=csv_buffer,
-            file_name=f"pedidos_{datetime.now().strftime('%Y-%m-%d')}.csv",
-            mime="text/csv"
-        )
-
-        # NUEVO: BOTÓN PARA BORRAR TODO
-        st.markdown("### ⚠️ Borrar todos los registros")
-        st.warning("Esta acción eliminará TODOS los pedidos permanentemente.")
-        if st.button("🗑️ Sí, borrar todo y empezar desde cero"):
-            if st.button("CONFIRMAR BORRADO (no se puede deshacer)"):
-                if os.path.exists(DATA_FILE):
-                    os.remove(DATA_FILE)
-                st.success("¡Todos los pedidos han sido borrados! La app empieza desde cero.")
-                st.rerun()
-
-elif opcion == "Cambiar Estado":
-    # (código igual al anterior)
-    st.header("Modificar Estado de Pedido")
-    df = cargar_datos()
-    if df.empty:
-        st.info("No hay pedidos.")
-    else:
-        busqueda = st.text_input("Buscar por nombre o ID")
-        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
-        if filtrado.empty:
-            st.warning("No encontrado.")
-        else:
-            opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
-            seleccionado = st.selectbox("Selecciona el pedido", opciones)
-            if seleccionado:
-                pedido_id = int(seleccionado.split(" - ")[0][1:])
-                pedido = df[df['ID'] == pedido_id].iloc[0]
-                st.write(f"Detalle: {pedido['Detalle']}")
-                st.write(f"Total: ${pedido['Total']:.2f}")
-                nuevo_
+elif opcion == "Ver Pedidos
