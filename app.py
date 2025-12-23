@@ -17,7 +17,7 @@ MENU = {
         "Mix Dog - Jumbo": 2.25, "Champi Dog": 2.25, "Hot Dog con cebolla": 1.75
     },
     "Papas Fritas": {
-        "Salchipapa (2.00)": 2.00, "Salchipapa (1.75)": 1.75, "Papi carne": 2.50, "Papi Pollo": 2.50,
+        "Salchipapa (1.50)": 1.50, "Salchipapa (1.75)": 1.75, "Papi carne": 2.50, "Papi Pollo": 2.50,
         "Salchipapa especial": 3.75, "Papa Mix": 3.75, "Papa Wlady": 5.00
     },
     "Sanduches": {
@@ -56,7 +56,6 @@ opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Camb
 if opcion == "Registrar Pedido":
     st.header("Registrar Nuevo Pedido")
 
-    # Ancla para volver al formulario
     st.markdown("<div id='formulario'></div>", unsafe_allow_html=True)
 
     if 'pedido_temp' not in st.session_state:
@@ -80,8 +79,9 @@ if opcion == "Registrar Pedido":
         i = 0
         for producto, precio in items.items():
             with cols[i % 3]:
+                key_unica = f"{cat}_{producto}_{datetime.now().strftime('%Y%m%d%H%M%S')}" if st.session_state.pedido_guardado else f"{cat}_{producto}_{i}"
                 cant_anterior = st.session_state.pedido_temp["seleccion"].get(f"{cat} - {producto}", 0)
-                cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=cant_anterior, step=1, key=f"{cat}_{producto}_{i}")
+                cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=cant_anterior, step=1, key=key_unica)
                 if cant > 0:
                     seleccion[f"{cat} - {producto}"] = cant
                     total += cant * precio
@@ -106,7 +106,6 @@ if opcion == "Registrar Pedido":
             st.session_state.pedido_guardado = False
             st.rerun()
 
-    # Mostrar resumen si hay pedido temporal
     if st.session_state.pedido_temp["total"] > 0 and st.session_state.pedido_temp["nombre"]:
         st.markdown("### 🔍 Resumen del pedido - Verifica antes de guardar")
         detalle_lista = [f"{c}x {p}" for p, c in st.session_state.pedido_temp["seleccion"].items()]
@@ -135,7 +134,6 @@ if opcion == "Registrar Pedido":
                 df = pd.concat([df, nuevo_pedido], ignore_index=True)
                 guardar_datos(df)
 
-                # CONFIRMACIÓN FINAL CLARA
                 st.session_state.pedido_guardado = True
                 st.session_state.nuevo_id_guardado = nuevo_id
                 st.session_state.detalle_guardado = detalle_str
@@ -143,11 +141,9 @@ if opcion == "Registrar Pedido":
 
         with col2:
             if st.button("✏️ Corregir"):
-                # Scroll al formulario
                 st.markdown("<script>window.location.hash = '#formulario';</script>", unsafe_allow_html=True)
                 st.rerun()
 
-    # Mensaje de éxito después de guardar
     if st.session_state.get('pedido_guardado', False):
         st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
         st.balloons()
@@ -159,14 +155,15 @@ if opcion == "Registrar Pedido":
         - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
         - **Estado**: {st.session_state.pedido_temp["estado"]}
         """)
-        st.info("Puedes registrar el siguiente pedido ahora. El formulario está listo abajo.")
+        st.info("El formulario está listo para el siguiente pedido.")
 
         if st.button("Registrar nuevo pedido"):
+            # Limpiar todo completamente
             st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
             st.session_state.pedido_guardado = False
             st.rerun()
 
-# (El resto del código "Ver Pedidos" y "Cambiar Estado" permanece igual)
+# (El resto del código "Ver Pedidos" y "Cambiar Estado" es el mismo de antes)
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
@@ -204,32 +201,4 @@ elif opcion == "Ver Pedidos":
                 if st.button("🔥 CONFIRMAR Y BORRAR TODO"):
                     if os.path.exists(DATA_FILE):
                         os.remove(DATA_FILE)
-                    st.success("¡Todos los registros borrados! Ahora empieza desde cero.")
-                    if 'confirmar_borrado' in st.session_state:
-                        del st.session_state.confirmar_borrado
-                    st.rerun()
-
-elif opcion == "Cambiar Estado":
-    st.header("Cambiar Estado de Pedido")
-    df = cargar_datos()
-    if df.empty:
-        st.info("No hay pedidos para modificar.")
-    else:
-        busqueda = st.text_input("Buscar por nombre o ID")
-        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
-        if filtrado.empty:
-            st.warning("No se encontró ningún pedido.")
-        else:
-            opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
-            seleccionado = st.selectbox("Selecciona el pedido", opciones)
-            if seleccionado:
-                pedido_id = int(seleccionado.split(" - ")[0][1:])
-                pedido = df[df['ID'] == pedido_id].iloc[0]
-                st.info(f"Detalle: {pedido['Detalle']}")
-                st.info(f"Total: ${pedido['Total']:.2f}")
-                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
-                if st.button("Actualizar Estado"):
-                    df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
-                    guardar_datos(df)
-                    st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
-                    st.rerun()
+                    st.success("¡Todos los registros borr
