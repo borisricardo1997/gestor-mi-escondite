@@ -39,6 +39,7 @@ st.title("🍔 Mi Escondite en la Amazonía - Gestor de Pedidos")
 opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Cambiar Estado"])
 
 if opcion == "Registrar Pedido":
+    # (código igual al anterior - no cambio nada aquí)
     st.header("Registrar Nuevo Pedido")
     nombre = st.text_input("Nombre del Pedido (ej. Berta Coello, Mesa 1)", "")
     if not nombre:
@@ -88,7 +89,7 @@ elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
     df = cargar_datos()
     if df.empty:
-        st.info("No hay pedidos.")
+        st.info("No hay pedidos registrados.")
     else:
         estado_filtro = st.multiselect("Filtrar por estado", ESTADOS, default=ESTADOS)
         fecha_filtro = st.date_input("Filtrar por fecha", value=None)
@@ -99,18 +100,29 @@ elif opcion == "Ver Pedidos":
         st.write(f"**Total mostrado: ${df_filtrado['Total'].sum():.2f}**")
 
         # Botón de descarga
-        st.markdown("### 📥 Descargar respaldo diario")
+        st.markdown("### 📥 Descargar respaldo")
         csv_buffer = io.BytesIO()
         df.to_csv(csv_buffer, index=False, encoding='utf-8')
         csv_buffer.seek(0)
         st.download_button(
-            label="Descargar todos los pedidos como CSV (para Excel)",
+            label="Descargar todos los pedidos como CSV",
             data=csv_buffer,
-            file_name=f"pedidos_mi_escondite_{datetime.now().strftime('%Y-%m-%d')}.csv",
+            file_name=f"pedidos_{datetime.now().strftime('%Y-%m-%d')}.csv",
             mime="text/csv"
         )
 
+        # NUEVO: BOTÓN PARA BORRAR TODO
+        st.markdown("### ⚠️ Borrar todos los registros")
+        st.warning("Esta acción eliminará TODOS los pedidos permanentemente.")
+        if st.button("🗑️ Sí, borrar todo y empezar desde cero"):
+            if st.button("CONFIRMAR BORRADO (no se puede deshacer)"):
+                if os.path.exists(DATA_FILE):
+                    os.remove(DATA_FILE)
+                st.success("¡Todos los pedidos han sido borrados! La app empieza desde cero.")
+                st.rerun()
+
 elif opcion == "Cambiar Estado":
+    # (código igual al anterior)
     st.header("Modificar Estado de Pedido")
     df = cargar_datos()
     if df.empty:
@@ -128,9 +140,4 @@ elif opcion == "Cambiar Estado":
                 pedido = df[df['ID'] == pedido_id].iloc[0]
                 st.write(f"Detalle: {pedido['Detalle']}")
                 st.write(f"Total: ${pedido['Total']:.2f}")
-                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
-                if st.button("Actualizar"):
-                    df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
-                    guardar_datos(df)
-                    st.success(f"¡Actualizado a {nuevo_estado}!")
-                    st.rerun()
+                nuevo_
