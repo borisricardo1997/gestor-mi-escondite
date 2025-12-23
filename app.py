@@ -1,7 +1,8 @@
-import streamlit as st
+Pythonimport streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import io  # <-- Nuevo para descarga
 
 DATA_FILE = 'pedidos_mi_escondite.csv'
 
@@ -119,4 +120,42 @@ elif opcion == "Cambiar Estado":
                     df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
                     guardar_datos(df)
                     st.success(f"Actualizado a {nuevo_estado}!")
+
                     st.rerun()
+                    # === NUEVO: BOTÓN DE DESCARGA ===
+        st.markdown("### Descargar datos")
+        # Convertir a CSV en memoria
+        csv_buffer = io.BytesIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        
+        st.download_button(
+            label="📥 Descargar todos los pedidos como CSV (abre en Excel)",
+            data=csv_buffer,
+            file_name=f"pedidos_mi_escondite_{datetime.now().strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+        # === FIN NUEVO ===
+
+Abajo haz Commit changes (mensaje: "Agregado botón de descarga diaria").
+
+En minutos, la app se actualizará sola y verás un botón azul "Descargar todos los pedidos como CSV".
+Al hacer clic, descarga un archivo con fecha del día, que abres directo en Excel.
+Forma 2: Manual (sin cambiar código)
+Si no quieres tocar el código:
+
+Abre la app en tu celular o PC.
+Ve a "Ver Pedidos".
+Selecciona todo el contenido de la tabla (con el mouse o dedo).
+Copia y pega en una hoja de Google Sheets o Excel.
+O toma captura de pantalla diaria.
+
+Pero la Forma 1 con el botón es mucho mejor y profesional.
+Recomendación para tu negocio
+
+Usa el botón nuevo para descargar al final de cada día.
+Guárdalo en una carpeta en tu celular/PC o en Google Drive.
+Así tienes respaldo diario de ingresos (ventas = suma de Total en "Pagado").
+
+¿Quieres que agregue también un módulo simple de egresos/gastos (para restar compras, sueldos, etc. y ver ganancia diaria)? Dime y lo hacemos rápido.
+¡Ya tienes todo para manejar ingresos profesionalmente! 💰📊3,7sFast
