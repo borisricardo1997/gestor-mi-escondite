@@ -3,12 +3,11 @@ import pandas as pd
 from datetime import datetime
 import os
 import io
-from zoneinfo import ZoneInfo  # Para zona horaria
+from zoneinfo import ZoneInfo
 
 DATA_FILE_PEDIDOS = 'pedidos_mi_escondite.csv'
 DATA_FILE_GASTOS = 'gastos_mi_escondite.csv'
 
-# Zona horaria de Ecuador (UTC-5)
 TZ_EC = ZoneInfo("America/Guayaquil")
 
 MENU = {
@@ -72,6 +71,7 @@ opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Regi
 now_ec = datetime.now(TZ_EC)
 
 if opcion == "Registrar Pedido":
+    # (Todo el código de Registrar Pedido permanece igual que antes)
     st.header("Registrar Nuevo Pedido")
 
     st.markdown("<div id='formulario'></div>", unsafe_allow_html=True)
@@ -164,4 +164,133 @@ if opcion == "Registrar Pedido":
 
     if st.session_state.get('pedido_guardado', False):
         st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
-        st.b
+        st.balloons()
+        st.markdown(f"""
+        **¡El pedido se registró correctamente!**
+        - **ID del pedido**: #{st.session_state.nuevo_id_guardado}
+        - **Cliente/Nombre**: {st.session_state.pedido_temp["nombre"]}
+        - **Items**: {st.session_state.detalle_guardado}
+        - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
+        - **Estado**: {st.session_state.pedido_temp["estado"]}
+        """)
+        st.info("El formulario está listo para el siguiente pedido.")
+
+        if st.button("Registrar nuevo pedido"):
+            st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso"}
+            st.session_state.pedido_guardado = False
+            st.rerun()
+
+elif opcion == "Registrar Gasto":
+    st.header("Registrar Gasto")
+    descripcion = st.text_input("Descripción del gasto (ej. Compra de carne, luz, sueldo)")
+    monto = st.number_input("Monto del gasto ($)", min_value=0.01, step=0.01)
+
+    if st.button("Guardar Gasto"):
+        if not descripcion.strip():
+            st.error("Debes poner una descripción.")
+        elif monto <= 0:
+            st.error("El monto debe ser mayor a 0.")
+        else:
+            df = cargar_gastos()
+            nuevo_gasto = pd.DataFrame([{
+                'Fecha': now_ec,
+                'Descripción': descripcion.strip(),
+                'Monto': round(monto, 2)
+            }])
+            df = pd.concat([df, nuevo_gasto], ignore_index=True)
+            guardar_gastos(df)
+            st.success(f"¡Gasto de ${monto:.2f} registrado correctamente!")
+            st.balloons()
+
+elif opcion == "Cierre de Caja":
+    st.header("Cierre de Caja")
+    fecha_cierre = st.date_input("Seleccionar fecha para cierre", value=now_ec.date())
+
+    df_pedidos = cargar_pedidos()
+    df_gastos = cargar_gastos()
+
+    pedidos_dia = df_pedidos[pd.to_datetime(df_pedidos['Fecha']).dt.date == fecha_cierre]
+    gastos_dia = df_gastos[pd.to_datetime(df_gastos['Fecha']).dt.date == fecha_cierre]
+
+    ventas_pagadas = pedidos_dia[pedidos_dia['Estado'] == 'Pagado']['Total'].sum()
+    total_gastos = gastos_dia['Monto'].sum()
+    ganancia_neta = ventas_pagadas - total_gastos
+
+    st.markdown(f"### Resumen del día {fecha_cierre.strftime('%d/%m/%Y')}")
+    st.write(f"**Ventas en efectivo (pedidos Pagados)**: ${ventas_pagadas:.2f}")
+    st.write(f"**Gastos registrados**: ${total_gastos:.2f}")
+    st.write(f"**Ganancia neta del día**: ${ganancia_neta:.2f}")
+
+    if not pedidos_dia.empty:
+        st.subheader("Pedidos del día")
+        st.dataframe(pedidos_dia[['ID', 'Nombre_Orden', 'Detalle', 'Total', 'Estado']])
+
+    if not gastos_dia.empty:
+        st.subheader("Gastos del día")
+        st.dataframe(gastos_dia)
+
+elif opcion == "Ver Pedidos":
+    st.header("Registro de Pedidos")
+    df = cargar_pedidos()
+    if df.empty:
+        st.info("No hay pedidos registrados aún.")
+    else:
+        estado_filtro = st.multiselect("Filtrar por estado", ESTADOS, default=ESTADOS)
+        fecha_filtro = st.date_input("Filtrar por fecha", value=None)
+        df_filtrado = df[df['Estado'].isin(estado_filtro)].copy()
+        if fecha_filtro:
+            df_filtrado = df_filtrado[pd.to_datetime(df_filtrado['Fecha']).dt.date == fecha_filtro]
+        st.dataframe(df_filtrado.sort_values('ID', ascending=False))
+        st.write(f"**Total mostrado: ${df_filtrado['Total'].sum():.2f}**")
+
+        st.markdown("### 📥 Descargar respaldo")
+        csv_buffer = io.BytesIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        st.download_button(
+            label="Descargar todos los pedidos (CSV para Excel)",
+            data=csv_buffer,
+            file_name=f"pedidos_{now_ec.strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+
+        st.markdown("### ⚠️ Limpiar todos los registros")
+        st.warning("Esto eliminará TODOS los pedidos para siempre.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Preparar borrado total"):
+                st.session_state.confirmar_borrado = True
+        with col2:
+            if st.session_state.get('confirmar_borrado', False):
+                if st.button("🔥 CONFIRMAR Y BORRAR TODO"):
+                    if os.path.exists(DATA_FILE_PEDIDOS):
+                        os.remove(DATA_FILE_PEDIDOS)
+                    st.success("¡Todos los registros de pedidos borrados! Ahora empieza desde cero.")
+                    if 'confirmar_borrado' in st.session_state:
+                        del st.session_state.confirmar_borrado
+                    st.rerun()
+
+elif opcion == "Cambiar Estado":
+    st.header("Cambiar Estado de Pedido")
+    df = cargar_pedidos()
+    if df.empty:
+        st.info("No hay pedidos para modificar.")
+    else:
+        busqueda = st.text_input("Buscar por nombre o ID")
+        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
+        if filtrado.empty:
+            st.warning("No se encontró ningún pedido.")
+        else:
+            opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
+            seleccionado = st.selectbox("Selecciona el pedido", opciones)
+            if seleccionado:
+                pedido_id = int(seleccionado.split(" - ")[0][1:])
+                pedido = df[df['ID'] == pedido_id].iloc[0]
+                st.info(f"Detalle: {pedido['Detalle']}")
+                st.info(f"Total: ${pedido['Total']:.2f}")
+                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
+                if st.button("Actualizar Estado"):
+                    df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
+                    guardar_pedidos(df)
+                    st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
+                    st.rerun()
