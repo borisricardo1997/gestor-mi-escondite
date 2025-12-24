@@ -17,7 +17,7 @@ MENU = {
         "Mix Dog - Jumbo": 2.25, "Champi Dog": 2.25, "Hot Dog con cebolla": 1.75
     },
     "Papas Fritas": {
-        "Salchipapa (1.50)": 1.50, "Salchipapa (1.75)": 1.75, "Papi carne": 2.50, "Papi Pollo": 2.50,
+        "Salchipapa ": 2.00, "Papi carne": 2.50, "Papi Pollo": 2.50,
         "Salchipapa especial": 3.75, "Papa Mix": 3.75, "Papa Wlady": 5.00
     },
     "Sanduches": {
@@ -227,3 +227,4 @@ elif opcion == "Cambiar Estado":
                     guardar_datos(df)
                     st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
                     st.rerun()
+
