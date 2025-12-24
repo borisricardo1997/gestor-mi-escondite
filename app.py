@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 DATA_FILE_PEDIDOS = 'pedidos_mi_escondite.csv'
 DATA_FILE_GASTOS = 'gastos_mi_escondite.csv'
+DATA_FILE_CAJA = 'caja_mi_escondite.csv'
 
 TZ_EC = ZoneInfo("America/Guayaquil")
 
@@ -21,7 +22,7 @@ MENU = {
         "Mix Dog - Jumbo": 2.25, "Champi Dog": 2.25, "Hot Dog con cebolla": 1.75
     },
     "Papas Fritas": {
-        "Salchipapa": 2.00, "Papi carne": 2.50, "Papi Pollo": 2.50,
+        "Salchipapa ": 2.00, "Papi carne": 2.50, "Papi Pollo": 2.50,
         "Salchipapa especial": 3.75, "Papa Mix": 3.75, "Papa Wlady": 5.00
     },
     "Sanduches": {
@@ -64,14 +65,45 @@ def cargar_gastos():
 def guardar_gastos(df):
     df.to_csv(DATA_FILE_GASTOS, index=False)
 
+def cargar_caja():
+    if os.path.exists(DATA_FILE_CAJA):
+        df = pd.read_csv(DATA_FILE_CAJA)
+        df['Fecha'] = pd.to_datetime(df['Fecha'])
+        return df.reset_index(drop=True)
+    return pd.DataFrame(columns=['Fecha', 'Inicial'])
+
+def guardar_caja(df):
+    df.to_csv(DATA_FILE_CAJA, index=False)
+
 st.title("🍔 Mi Escondite en la Amazonía - Gestor de Pedidos y Caja")
 
-opcion = st.sidebar.selectbox("Menú", ["Registrar Pedido", "Ver Pedidos", "Registrar Gasto", "Cierre de Caja", "Cambiar Estado"])
+opcion = st.sidebar.selectbox("Menú", ["Apertura de Caja", "Registrar Pedido", "Ver Pedidos", "Registrar Gasto", "Cierre de Caja", "Cambiar Estado"])
 
 now_ec = datetime.now(TZ_EC)
 
-if opcion == "Registrar Pedido":
-    # (Todo el código de Registrar Pedido permanece igual que antes)
+if opcion == "Apertura de Caja":
+    st.header("Apertura de Caja")
+    df_caja = cargar_caja()
+    fecha_hoy = now_ec.date()
+    apertura_hoy = df_caja[pd.to_datetime(df_caja['Fecha']).dt.date == fecha_hoy]
+
+    if not apertura_hoy.empty:
+        st.info(f"Caja ya abierta hoy con inicial ${apertura_hoy['Inicial'].iloc[0]:.2f}.")
+    else:
+        inicial = st.number_input("Valor inicial en caja ($)", min_value=0.0, step=0.01)
+        if st.button("Abrir Caja"):
+            if inicial < 0:
+                st.error("El valor inicial no puede ser negativo.")
+            else:
+                nuevo_apertura = pd.DataFrame([{
+                    'Fecha': now_ec,
+                    'Inicial': round(inicial, 2)
+                }])
+                df_caja = pd.concat([df_caja, nuevo_apertura], ignore_index=True)
+                guardar_caja(df_caja)
+                st.success(f"¡Caja abierta con inicial ${inicial:.2f}! Ahora puedes registrar pedidos.")
+
+elif opcion == "Registrar Pedido":
     st.header("Registrar Nuevo Pedido")
 
     st.markdown("<div id='formulario'></div>", unsafe_allow_html=True)
@@ -202,24 +234,45 @@ elif opcion == "Registrar Gasto":
             st.success(f"¡Gasto de ${monto:.2f} registrado correctamente!")
             st.balloons()
 
+    # Descargar gastos
+    df = cargar_gastos()
+    if not df.empty:
+        st.markdown("### 📥 Descargar gastos")
+        csv_buffer = io.BytesIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        st.download_button(
+            label="Descargar todos los gastos (CSV para Excel)",
+            data=csv_buffer,
+            file_name=f"gastos_{now_ec.strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+
 elif opcion == "Cierre de Caja":
     st.header("Cierre de Caja")
     fecha_cierre = st.date_input("Seleccionar fecha para cierre", value=now_ec.date())
 
     df_pedidos = cargar_pedidos()
     df_gastos = cargar_gastos()
+    df_caja = cargar_caja()
+
+    apertura_dia = df_caja[pd.to_datetime(df_caja['Fecha']).dt.date == fecha_cierre]
+    inicial = apertura_dia['Inicial'].iloc[0] if not apertura_dia.empty else 0.00
 
     pedidos_dia = df_pedidos[pd.to_datetime(df_pedidos['Fecha']).dt.date == fecha_cierre]
     gastos_dia = df_gastos[pd.to_datetime(df_gastos['Fecha']).dt.date == fecha_cierre]
 
     ventas_pagadas = pedidos_dia[pedidos_dia['Estado'] == 'Pagado']['Total'].sum()
     total_gastos = gastos_dia['Monto'].sum()
+    caja_final = inicial + ventas_pagadas - total_gastos
     ganancia_neta = ventas_pagadas - total_gastos
 
     st.markdown(f"### Resumen del día {fecha_cierre.strftime('%d/%m/%Y')}")
+    st.write(f"**Inicial en caja**: ${inicial:.2f}")
     st.write(f"**Ventas en efectivo (pedidos Pagados)**: ${ventas_pagadas:.2f}")
     st.write(f"**Gastos registrados**: ${total_gastos:.2f}")
     st.write(f"**Ganancia neta del día**: ${ganancia_neta:.2f}")
+    st.write(f"**Caja final estimada**: ${caja_final:.2f}")
 
     if not pedidos_dia.empty:
         st.subheader("Pedidos del día")
@@ -228,6 +281,31 @@ elif opcion == "Cierre de Caja":
     if not gastos_dia.empty:
         st.subheader("Gastos del día")
         st.dataframe(gastos_dia)
+
+    # Botón para cerrar y limpiar el día
+    st.markdown("### ⚠️ Cerrar Caja y Limpiar Día")
+    st.warning("Esto eliminará los pedidos y gastos del día después de descargar el reporte. No se puede deshacer.")
+    if st.button("Generar Reporte y Cerrar Caja"):
+        # Generar reporte combinado
+        reporte = pd.DataFrame({
+            'Tipo': ['Inicial', 'Ventas', 'Gastos', 'Ganancia Neta', 'Caja Final'],
+            'Monto': [inicial, ventas_pagadas, total_gastos, ganancia_neta, caja_final]
+        })
+        csv_buffer = io.BytesIO()
+        reporte.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        st.download_button(
+            label="Descargar Reporte de Cierre (CSV)",
+            data=csv_buffer,
+            file_name=f"cierre_caja_{fecha_cierre.strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+        # Limpiar el día
+        df_pedidos = df_pedidos[pd.to_datetime(df_pedidos['Fecha']).dt.date != fecha_cierre]
+        guardar_pedidos(df_pedidos)
+        df_gastos = df_gastos[pd.to_datetime(df_gastos['Fecha']).dt.date != fecha_cierre]
+        guardar_gastos(df_gastos)
+        st.success("¡Caja cerrada y día limpiado! Listo para el siguiente día.")
 
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
