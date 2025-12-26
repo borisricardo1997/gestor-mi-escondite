@@ -110,7 +110,6 @@ elif opcion == "Registrar Pedido":
     if not caja_abierta:
         st.error("🚫 La caja no está abierta hoy. Ve a 'Apertura de Caja' para iniciar el día.")
     else:
-        # (Código de registro de pedido igual que antes - no lo repito para ahorrar espacio)
         st.header("Registrar Nuevo Pedido")
         st.markdown("<div id='formulario'></div>", unsafe_allow_html=True)
 
@@ -224,6 +223,39 @@ elif opcion == "Registrar Pedido":
                 st.session_state.pedido_guardado = False
                 st.rerun()
 
+elif opcion == "Registrar Gasto":
+    st.header("Registrar Gasto")
+    descripcion = st.text_input("Descripción del gasto")
+    monto = st.number_input("Monto del gasto ($)", min_value=0.01, step=0.01)
+
+    if st.button("Guardar Gasto"):
+        if not descripcion.strip():
+            st.error("Debes poner una descripción.")
+        else:
+            df = cargar_gastos()
+            nuevo_gasto = pd.DataFrame([{
+                'Fecha': now_ec,
+                'Descripción': descripcion.strip(),
+                'Monto': round(monto, 2)
+            }])
+            df = pd.concat([df, nuevo_gasto], ignore_index=True)
+            guardar_gastos(df)
+            st.success(f"¡Gasto de ${monto:.2f} registrado!")
+            st.balloons()
+
+    df = cargar_gastos()
+    if not df.empty:
+        st.markdown("### 📥 Descargar gastos")
+        csv_buffer = io.BytesIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        st.download_button(
+            label="Descargar todos los gastos (CSV)",
+            data=csv_buffer,
+            file_name=f"gastos_{now_ec.strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+
 elif opcion == "Cierre de Caja":
     st.header("Cierre de Caja - Generar Reporte")
     fecha_cierre = st.date_input("Seleccionar fecha para reporte", value=now_ec.date())
@@ -260,7 +292,7 @@ elif opcion == "Cierre de Caja":
     st.write(f"**Ganancia neta**: ${ganancia_neta:.2f}")
     st.write(f"**Caja final en efectivo**: ${caja_final:.2f}")
 
-    # Generar reporte para descargar
+    # Botón de descarga siempre visible
     reporte = pd.DataFrame({
         'Concepto': ['Inicial', 'Ventas Efectivo', 'Transferencia De Una', 'Transferencia Jardín Azuayo', 'Transferencia JEP', 'Gastos', 'Ganancia Neta', 'Caja Final Efectivo'],
         'Monto': [inicial, ventas_efectivo, ventas_deuna, ventas_jardin, ventas_jep, total_gastos, ganancia_neta, caja_final]
@@ -278,9 +310,7 @@ elif opcion == "Cierre de Caja":
         type="primary"
     )
 
-    st.success("¡Reporte generado! Descárgalo ahora. Los datos se mantienen para historial.")
-
-    # NO BORRAMOS NADA - los datos quedan para siempre
+    st.success("¡Reporte generado! Descárgalo arriba. Los datos se mantienen para historial.")
 
 elif opcion == "Historial de Cierres":
     st.header("Historial de Cierres de Caja")
@@ -292,7 +322,6 @@ elif opcion == "Historial de Cierres":
     df_gastos = cargar_gastos()
     df_caja = cargar_caja()
 
-    # (Mismo cálculo que en Cierre de Caja)
     apertura_dia = df_caja[pd.to_datetime(df_caja['Fecha']).dt.date == fecha_hist]
     inicial = apertura_dia['Inicial'].iloc[0] if not apertura_dia.empty else 0.00
 
@@ -337,4 +366,54 @@ elif opcion == "Historial de Cierres":
         mime="text/csv"
     )
 
-# (Las secciones "Registrar Gasto", "Ver Pedidos" y "Cambiar Estado" permanecen igual que antes)
+elif opcion == "Ver Pedidos":
+    st.header("Registro de Pedidos")
+    df = cargar_pedidos()
+    if df.empty:
+        st.info("No hay pedidos registrados aún.")
+    else:
+        estado_filtro = st.multiselect("Filtrar por estado", ESTADOS, default=ESTADOS)
+        metodo_filtro = st.multiselect("Filtrar por método de pago", METODOS_PAGO, default=METODOS_PAGO)
+        fecha_filtro = st.date_input("Filtrar por fecha", value=None)
+        df_filtrado = df[df['Estado'].isin(estado_filtro) & df['Metodo_Pago'].isin(metodo_filtro)].copy()
+        if fecha_filtro:
+            df_filtrado = df_filtrado[pd.to_datetime(df_filtrado['Fecha']).dt.date == fecha_filtro]
+        st.dataframe(df_filtrado.sort_values('ID', ascending=False))
+        st.write(f"**Total mostrado: ${df_filtrado['Total'].sum():.2f}**")
+
+        st.markdown("### 📥 Descargar respaldo")
+        csv_buffer = io.BytesIO()
+        df.to_csv(csv_buffer, index=False, encoding='utf-8')
+        csv_buffer.seek(0)
+        st.download_button(
+            label="Descargar todos los pedidos (CSV)",
+            data=csv_buffer,
+            file_name=f"pedidos_{now_ec.strftime('%Y-%m-%d')}.csv",
+            mime="text/csv"
+        )
+
+elif opcion == "Cambiar Estado":
+    st.header("Cambiar Estado de Pedido")
+    df = cargar_pedidos()
+    if df.empty:
+        st.info("No hay pedidos para modificar.")
+    else:
+        busqueda = st.text_input("Buscar por nombre o ID")
+        filtrado = df[df['Nombre_Orden'].str.contains(busqueda, case=False, na=False) | df['ID'].astype(str).str.contains(busqueda)]
+        if filtrado.empty:
+            st.warning("No se encontró ningún pedido.")
+        else:
+            opciones = [f"#{row['ID']} - {row['Nombre_Orden']} ({row['Estado']})" for _, row in filtrado.iterrows()]
+            seleccionado = st.selectbox("Selecciona el pedido", opciones)
+            if seleccionado:
+                pedido_id = int(seleccionado.split(" - ")[0][1:])
+                pedido = df[df['ID'] == pedido_id].iloc[0]
+                st.info(f"Detalle: {pedido['Detalle']}")
+                st.info(f"Total: ${pedido['Total']:.2f}")
+                st.info(f"Método de pago: {pedido['Metodo_Pago']}")
+                nuevo_estado = st.selectbox("Nuevo estado", ESTADOS, index=ESTADOS.index(pedido['Estado']))
+                if st.button("Actualizar Estado"):
+                    df.loc[df['ID'] == pedido_id, 'Estado'] = nuevo_estado
+                    guardar_pedidos(df)
+                    st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
+                    st.rerun()
