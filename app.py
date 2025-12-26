@@ -78,7 +78,9 @@ def cargar_caja():
 def guardar_caja(df):
     df.to_csv(DATA_FILE_CAJA, index=False)
 
-st.title("🍔 Mi Escondite en la Amazonía - Gestor de Pedidos y Caja")
+st.set_page_config(page_title="Mi Escondite", layout="centered")
+st.markdown("<h1 style='text-align: center; color: #FF4500;'>🍔 Mi Escondite en la Amazonía</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>Gestor de Pedidos y Caja</p>", unsafe_allow_html=True)
 
 opcion = st.sidebar.selectbox("Menú", ["Apertura de Caja", "Registrar Pedido", "Ver Pedidos", "Registrar Gasto", "Cierre de Caja", "Historial de Cierres", "Cambiar Estado"])
 
@@ -108,106 +110,119 @@ if opcion == "Apertura de Caja":
 elif opcion == "Registrar Pedido":
     if not caja_abierta:
         st.error("🚫 La caja no está abierta hoy. Ve a 'Apertura de Caja' para iniciar el día.")
-    else:
-        st.header("Registrar Nuevo Pedido")
-        st.markdown("<div id='formulario'></div>", unsafe_allow_html=True)
-        if 'pedido_temp' not in st.session_state:
-            st.session_state.pedido_temp = {
-                "nombre": "",
-                "seleccion": {},
-                "total": 0.0,
-                "estado": "En proceso",
-                "metodo_pago": "Efectivo"
-            }
-        if 'pedido_guardado' not in st.session_state:
-            st.session_state.pedido_guardado = False
-        nombre = st.text_input("Nombre del Pedido (ej. Berta Coello, Mesa 1)", value=st.session_state.pedido_temp["nombre"])
-        total = 0.0
-        seleccion = {}
-        for cat, items in MENU.items():
-            st.subheader(cat)
+        st.stop()
+
+    st.header("Registrar Pedido Rápido")
+
+    # Carrito en session_state
+    if 'carrito' not in st.session_state:
+        st.session_state.carrito = {}
+
+    # Resumen fijo arriba
+    col1, col2, col3 = st.columns([3, 2, 2])
+    with col1:
+        nombre = st.text_input("Cliente / Mesa", placeholder="Ej. Mesa 3, Juan")
+    with col2:
+        total = sum(st.session_state.carrito.get(key, 0) * precio for cat in MENU for key, precio in [(f"{cat} - {p}", precio) for p, precio in MENU[cat].items()])
+        st.markdown(f"<h3 style='color: #FF4500;'>Total: ${total:.2f}</h3>", unsafe_allow_html=True)
+    with col3:
+        metodo_pago = st.selectbox("Método de Pago", METODOS_PAGO)
+
+    # Pestañas por categoría
+    tabs = st.tabs(list(MENU.keys()))
+
+    for tab, categoria in zip(tabs, MENU.keys()):
+        with tab:
+            items = MENU[categoria]
             cols = st.columns(3)
-            i = 0
-            for producto, precio in items.items():
-                with cols[i % 3]:
-                    key_unica = f"{cat}_{producto}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}" if st.session_state.pedido_guardado else f"{cat}_{producto}_{i}"
-                    cant_anterior = st.session_state.pedido_temp["seleccion"].get(f"{cat} - {producto}", 0)
-                    cant = st.number_input(f"{producto} (${precio:.2f})", min_value=0, value=cant_anterior, step=1, key=key_unica)
-                    if cant > 0:
-                        seleccion[f"{cat} - {producto}"] = cant
-                        total += cant * precio
-                i += 1
-        st.markdown("---")
-        st.write(f"**Total del pedido: ${total:.2f}**")
-        estado = st.selectbox("Estado inicial", ESTADOS, index=ESTADOS.index(st.session_state.pedido_temp["estado"]))
-        metodo_pago = st.selectbox("Método de pago", METODOS_PAGO, index=METODOS_PAGO.index(st.session_state.pedido_temp.get("metodo_pago", "Efectivo")))
+            for idx, (producto, precio) in enumerate(items.items()):
+                col = cols[idx % 3]
+                key = f"{categoria} - {producto}"
+                cantidad = st.session_state.carrito.get(key, 0)
+                with col:
+                    st.markdown(f"<h4 style='color: #000000; margin-bottom: 5px;'>{producto}</h4>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='color: #FF4500; font-weight: bold; margin-top: 0;'>${precio:.2f}</p>", unsafe_allow_html=True)
+                    col_btn = st.columns([1, 2, 1])
+                    with col_btn[0]:
+                        if st.button("➖", key=f"menos_{key}"):
+                            if cantidad > 0:
+                                st.session_state.carrito[key] = cantidad - 1
+                                if st.session_state.carrito[key] == 0:
+                                    del st.session_state.carrito[key]
+                                st.rerun()
+                    with col_btn[1]:
+                        st.markdown(f"<h2 style='text-align: center; color: #FF4500; margin: 0;'>{cantidad}</h2>", unsafe_allow_html=True)
+                    with col_btn[2]:
+                        if st.button("➕", key=f"mas_{key}", type="primary"):
+                            st.session_state.carrito[key] = cantidad + 1
+                            st.rerun()
+
+    # Resumen y guardar con revisión
+    st.markdown("### Resumen del Pedido")
+    if st.session_state.carrito:
+        detalle = []
+        total = 0
+        for key, cant in st.session_state.carrito.items():
+            cat, prod = key.split(" - ", 1)
+            precio = next(precio for c, items in MENU.items() if c == cat for p, precio in items.items() if p == prod)
+            total += cant * precio
+            detalle.append(f"{cant}x {prod}")
+        st.write(" | ".join(detalle))
+        st.markdown(f"<h3 style='color: #FF4500;'>Total: ${total:.2f}</h3>", unsafe_allow_html=True)
+
         if st.button("Revisar Pedido antes de guardar"):
-            if not nombre.strip():
-                st.error("❌ Debes poner un nombre al pedido.")
+            if not nombre:
+                st.error("Ingresa un nombre o mesa.")
             elif total == 0:
-                st.error("❌ Agrega al menos un producto.")
+                st.error("Agrega al menos un producto.")
             else:
                 st.session_state.pedido_temp = {
-                    "nombre": nombre.strip(),
-                    "seleccion": seleccion,
+                    "nombre": nombre,
+                    "detalle": " | ".join(detalle),
                     "total": total,
-                    "estado": estado,
+                    "estado": "En proceso",
                     "metodo_pago": metodo_pago
                 }
-                st.session_state.pedido_guardado = False
                 st.rerun()
-        if st.session_state.pedido_temp["total"] > 0 and st.session_state.pedido_temp["nombre"]:
-            st.markdown("### 🔍 Resumen del pedido - Verifica antes de guardar")
-            detalle_lista = [f"{c}x {p}" for p, c in st.session_state.pedido_temp["seleccion"].items()]
-            detalle_str = " | ".join(detalle_lista) if detalle_lista else "Sin items"
+
+        if 'pedido_temp' in st.session_state:
+            st.markdown("### 🔍 Confirma el pedido")
             st.markdown(f"""
-            **Nombre**: {st.session_state.pedido_temp["nombre"]}
-            **Detalle**: {detalle_str}
+            **Cliente/Mesa**: {st.session_state.pedido_temp["nombre"]}
+            **Detalle**: {st.session_state.pedido_temp["detalle"]}
             **Total**: ${st.session_state.pedido_temp["total"]:.2f}
-            **Estado**: {st.session_state.pedido_temp["estado"]}
-            **Método de pago**: {st.session_state.pedido_temp["metodo_pago"]}
+            **Pago**: {st.session_state.pedido_temp["metodo_pago"]}
             """)
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("✅ Confirmar y guardar definitivamente", type="primary"):
+                if st.button("✅ Guardar Pedido", type="primary"):
                     df = cargar_pedidos()
                     nuevo_id = int(df['ID'].max() + 1) if not df.empty else 1
                     nuevo_pedido = pd.DataFrame([{
                         'ID': nuevo_id,
                         'Nombre_Orden': st.session_state.pedido_temp["nombre"],
                         'Fecha': now_ec,
-                        'Detalle': detalle_str,
-                        'Total': round(st.session_state.pedido_temp["total"], 2),
-                        'Estado': st.session_state.pedido_temp["estado"],
+                        'Detalle': st.session_state.pedido_temp["detalle"],
+                        'Total': st.session_state.pedido_temp["total"],
+                        'Estado': "En proceso",
                         'Metodo_Pago': st.session_state.pedido_temp["metodo_pago"]
                     }])
                     df = pd.concat([df, nuevo_pedido], ignore_index=True)
                     guardar_pedidos(df)
-                    st.session_state.pedido_guardado = True
-                    st.session_state.nuevo_id_guardado = nuevo_id
-                    st.session_state.detalle_guardado = detalle_str
+                    st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
+                    st.balloons()
+                    st.session_state.carrito = {}
+                    if 'pedido_temp' in st.session_state:
+                        del st.session_state.pedido_temp
                     st.rerun()
             with col2:
                 if st.button("✏️ Corregir"):
-                    st.markdown("<script>window.location.hash = '#formulario';</script>", unsafe_allow_html=True)
+                    if 'pedido_temp' in st.session_state:
+                        del st.session_state.pedido_temp
                     st.rerun()
-        if st.session_state.get('pedido_guardado', False):
-            st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
-            st.balloons()
-            st.markdown(f"""
-            **¡El pedido se registró correctamente!**
-            - **ID del pedido**: #{st.session_state.nuevo_id_guardado}
-            - **Cliente/Nombre**: {st.session_state.pedido_temp["nombre"]}
-            - **Items**: {st.session_state.detalle_guardado}
-            - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
-            - **Método de pago**: {st.session_state.pedido_temp["metodo_pago"]}
-            - **Estado**: {st.session_state.pedido_temp["estado"]}
-            """)
-            st.info("El formulario está listo para el siguiente pedido.")
-            if st.button("Registrar nuevo pedido"):
-                st.session_state.pedido_temp = {"nombre": "", "seleccion": {}, "total": 0.0, "estado": "En proceso", "metodo_pago": "Efectivo"}
-                st.session_state.pedido_guardado = False
-                st.rerun()
+    else:
+        st.info("🛒 Agrega productos para comenzar el pedido.")
+
 elif opcion == "Registrar Gasto":
     st.header("Registrar Gasto")
     descripcion = st.text_input("Descripción del gasto")
@@ -238,6 +253,7 @@ elif opcion == "Registrar Gasto":
             file_name=f"gastos_{now_ec.strftime('%Y-%m-%d')}.csv",
             mime="text/csv"
         )
+
 elif opcion == "Cierre de Caja":
     st.header("Cierre de Caja")
     fecha_cierre = st.date_input("Seleccionar fecha para cierre", value=now_ec.date())
@@ -272,7 +288,6 @@ elif opcion == "Cierre de Caja":
     if not gastos_dia.empty:
         st.subheader("Gastos del día")
         st.dataframe(gastos_dia)
-    # REPORTE Y BOTÓN DE DESCARGA SIEMPRE VISIBLE
     st.markdown("### 📥 Reporte de Cierre - Descargar")
     reporte = pd.DataFrame({
         'Concepto': ['Inicial', 'Ventas Efectivo', 'Transferencia De Una', 'Transferencia Jardín Azuayo', 'Transferencia JEP', 'Gastos', 'Ganancia Neta', 'Caja Final Efectivo'],
@@ -288,7 +303,6 @@ elif opcion == "Cierre de Caja":
         mime="text/csv",
         type="primary"
     )
-    # BOTÓN SEPARADO PARA CERRAR Y REINICIAR
     st.markdown("### ⚠️ Cerrar Caja y Reiniciar Día")
     st.warning("Esto eliminará los pedidos, gastos y la apertura de caja del día seleccionado. Después necesitarás abrir caja nuevamente para registrar pedidos.")
     col1, col2 = st.columns(2)
@@ -298,7 +312,6 @@ elif opcion == "Cierre de Caja":
     with col2:
         if st.session_state.get('confirmar_cierre', False):
             if st.button("🔥 CONFIRMAR CIERRE Y LIMPIAR TODO"):
-                # Borrar datos del día seleccionado
                 df_pedidos = df_pedidos[pd.to_datetime(df_pedidos['Fecha']).dt.date != fecha_cierre]
                 guardar_pedidos(df_pedidos)
                 df_gastos = df_gastos[pd.to_datetime(df_gastos['Fecha']).dt.date != fecha_cierre]
@@ -309,6 +322,7 @@ elif opcion == "Cierre de Caja":
                 if 'confirmar_cierre' in st.session_state:
                     del st.session_state.confirmar_cierre
                 st.rerun()
+
 elif opcion == "Historial de Cierres":
     st.header("Historial de Cierres de Caja")
     st.info("Selecciona una fecha para ver o descargar el reporte histórico.")
@@ -351,6 +365,7 @@ elif opcion == "Historial de Cierres":
         file_name=f"reporte_historico_{fecha_hist.strftime('%Y-%m-%d')}.csv",
         mime="text/csv"
     )
+
 elif opcion == "Ver Pedidos":
     st.header("Registro de Pedidos")
     df = cargar_pedidos()
@@ -375,6 +390,7 @@ elif opcion == "Ver Pedidos":
             file_name=f"pedidos_{now_ec.strftime('%Y-%m-%d')}.csv",
             mime="text/csv"
         )
+
 elif opcion == "Cambiar Estado":
     st.header("Cambiar Estado de Pedido")
     df = cargar_pedidos()
