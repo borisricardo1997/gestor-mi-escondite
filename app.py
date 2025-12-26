@@ -211,6 +211,14 @@ elif opcion == "Registrar Pedido":
                     guardar_pedidos(df)
                     st.success("🎉 ¡PEDIDO GUARDADO CON ÉXITO!")
                     st.balloons()
+                    st.markdown(f"""
+                    **¡El pedido se registró correctamente!**
+                    - **ID del pedido**: #{nuevo_id}
+                    - **Cliente/Mesa**: {st.session_state.pedido_temp["nombre"]}
+                    - **Detalle**: {st.session_state.pedido_temp["detalle"]}
+                    - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
+                    - **Método de pago**: {st.session_state.pedido_temp["metodo_pago"]}
+                    """)
                     st.session_state.carrito = {}
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
