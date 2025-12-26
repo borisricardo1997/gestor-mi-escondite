@@ -223,14 +223,15 @@ elif opcion == "Registrar Pedido":
                     st.session_state.carrito = {}
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
-                    st.rerun()
+                    # No rerun para que el mensaje se quede visible
             with col2:
                 if st.button("✏️ Corregir"):
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
                     st.rerun()
 
-        # Botón adicional para registrar nuevo pedido (limpia todo)
+        # Botón para registrar nuevo pedido (limpia todo)
+        st.markdown("---")
         if st.button("🆕 Registrar Nuevo Pedido"):
             st.session_state.carrito = {}
             if 'pedido_temp' in st.session_state:
