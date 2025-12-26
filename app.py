@@ -144,8 +144,8 @@ elif opcion == "Registrar Pedido":
                     st.markdown(f"<p style='color: #FF4500; font-weight: bold; margin-top: 0;'>${precio:.2f}</p>", unsafe_allow_html=True)
                     col_btn = st.columns([1, 2, 1])
                     with col_btn[0]:
-                        if st.button("➖", key=f"menos_{key}"):
-                            if cantidad > 0:
+                        if cantidad > 0:
+                            if st.button("➖", key=f"menos_{key}"):
                                 st.session_state.carrito[key] = cantidad - 1
                                 if st.session_state.carrito[key] == 0:
                                     del st.session_state.carrito[key]
