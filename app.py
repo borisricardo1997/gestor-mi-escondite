@@ -121,9 +121,7 @@ elif opcion == "Registrar Pedido":
     # Resumen fijo arriba
     col1, col2, col3 = st.columns([3, 2, 2])
     with col1:
-        # Usamos key única para forzar que se borre el valor al limpiar
-        nombre_key = "nombre_cliente" if 'guardado' not in st.session_state else "nombre_cliente_nuevo"
-        nombre = st.text_input("Cliente / Mesa", placeholder="Ej. Mesa 3, Juan", value="", key=nombre_key)
+        nombre = st.text_input("Cliente / Mesa", placeholder="Ej. Mesa 3, Juan", value="")
     with col2:
         total = sum(st.session_state.carrito.get(key, 0) * precio for cat in MENU for key, precio in [(f"{cat} - {p}", precio) for p, precio in MENU[cat].items()])
         st.markdown(f"<h3 style='color: #FF4500;'>Total: ${total:.2f}</h3>", unsafe_allow_html=True)
@@ -225,25 +223,21 @@ elif opcion == "Registrar Pedido":
                     st.session_state.carrito = {}
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
-                    st.session_state.guardado = True  # Para cambiar la key del text_input y borrarlo
             with col2:
                 if st.button("✏️ Corregir"):
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
                     st.rerun()
 
-        # Botón para registrar nuevo pedido (limpia todo, incluido el nombre)
+        # Botón para registrar nuevo pedido (limpia todo)
         st.markdown("---")
         if st.button("🆕 Registrar Nuevo Pedido"):
             st.session_state.carrito = {}
             if 'pedido_temp' in st.session_state:
                 del st.session_state.pedido_temp
-            st.session_state.guardado = True  # Cambia la key para borrar el nombre
             st.rerun()
     else:
         st.info("🛒 Agrega productos para comenzar el pedido.")
-
-# (El resto del código para las otras pestañas permanece igual)
 
 elif opcion == "Registrar Gasto":
     st.header("Registrar Gasto")
@@ -275,7 +269,8 @@ elif opcion == "Registrar Gasto":
             file_name=f"gastos_{now_ec.strftime('%Y-%m-%d')}.csv",
             mime="text/csv"
         )
-        elif opcion == "Cierre de Caja":
+
+elif opcion == "Cierre de Caja":
     st.header("Cierre de Caja")
     fecha_cierre = st.date_input("Seleccionar fecha para cierre", value=now_ec.date())
     df_pedidos = cargar_pedidos()
@@ -437,5 +432,3 @@ elif opcion == "Cambiar Estado":
                     guardar_pedidos(df)
                     st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
                     st.rerun()
-
-# (Mantén las secciones Cierre de Caja, Historial de Cierres, Ver Pedidos y Cambiar Estado igual que antes)
