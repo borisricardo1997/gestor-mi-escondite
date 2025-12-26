@@ -30,10 +30,10 @@ MENU = {
     },
     "Bebidas": {
         "Colas Coca Pequeña": 0.75, "Cola Sabores Pequeña": 0.50, "Cola Inka Grande": 1.00,
-        "Fuze Tea mediano": 1.00, "Fuze Tea Grande": 1.50, "Coca Flaca": 1.75,
+        "Fuze Tea mediano": 1.00, "Fuze Tea Pequeño": 0.50, "Fuze Tea Grande": 1.50, "Coca Flaca": 1.75,
         "Cola Sabores Flaca": 1.50, "Jugos": 1.50, "Batidos": 1.75, "Botella de Agua": 0.75, "Jamaica": 0.75
     },
-    "Porciónes": {
+    "Porciones": {
         "Papas Fritas (0.50)": 0.50, "Papas Fritas (1.00)": 1.00, "Huevo Frito": 0.75,
         "Presa de Pollo": 1.50, "Pollo desmenuzado": 0.75, "Salame": 0.75, "Queso": 0.75, "Carne": 0.75, "Tocino": 0.75
     }
@@ -432,3 +432,4 @@ elif opcion == "Cambiar Estado":
                     guardar_pedidos(df)
                     st.success(f"¡Pedido #{pedido_id} actualizado a {nuevo_estado}!")
                     st.rerun()
+
