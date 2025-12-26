@@ -219,6 +219,7 @@ elif opcion == "Registrar Pedido":
                     - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
                     - **Método de pago**: {st.session_state.pedido_temp["metodo_pago"]}
                     """)
+                    st.info("El carrito está vacío y listo para el siguiente pedido.")
                     st.session_state.carrito = {}
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
