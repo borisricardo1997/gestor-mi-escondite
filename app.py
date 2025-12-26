@@ -121,7 +121,7 @@ elif opcion == "Registrar Pedido":
     # Resumen fijo arriba
     col1, col2, col3 = st.columns([3, 2, 2])
     with col1:
-        nombre = st.text_input("Cliente / Mesa", placeholder="Ej. Mesa 3, Juan")
+        nombre = st.text_input("Cliente / Mesa", placeholder="Ej. Mesa 3, Juan", value="")
     with col2:
         total = sum(st.session_state.carrito.get(key, 0) * precio for cat in MENU for key, precio in [(f"{cat} - {p}", precio) for p, precio in MENU[cat].items()])
         st.markdown(f"<h3 style='color: #FF4500;'>Total: ${total:.2f}</h3>", unsafe_allow_html=True)
@@ -219,11 +219,11 @@ elif opcion == "Registrar Pedido":
                     - **Total cobrado**: ${st.session_state.pedido_temp["total"]:.2f}
                     - **Método de pago**: {st.session_state.pedido_temp["metodo_pago"]}
                     """)
-                    st.info("El carrito está vacío y listo para el siguiente pedido.")
+                    st.info("El formulario está listo para el siguiente pedido.")
                     st.session_state.carrito = {}
                     if 'pedido_temp' in st.session_state:
                         del st.session_state.pedido_temp
-                    st.rerun()
+                    # No st.rerun() para que el mensaje se quede visible
             with col2:
                 if st.button("✏️ Corregir"):
                     if 'pedido_temp' in st.session_state:
